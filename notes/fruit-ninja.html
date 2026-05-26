@@ -151,7 +151,7 @@ function spawnWave() {
   for (let i = 0; i < count; i++) {
     const isBomb = Math.random() < S.bombChance;
     const x = rand(W * 0.1, W * 0.9);
-    const vy = rand(-H * 1.7, -H * 1.1);
+    const vy = rand(-H * 1.35, -H * 0.85);
     const vx = rand(-100, 100);
     if (isBomb) {
       S.objects.push({
