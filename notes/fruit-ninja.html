@@ -303,7 +303,7 @@ function sliceObject(obj, bladePt) {
     addPopup(obj.x, obj.y, pts > 1 ? `+${pts} x${S.combo}` : '+1', obj.color);
     if (S.combo >= 3) sfxCombo(Math.min(S.combo, 8));
     else sfxSlice();
-    S.chainTimer = 0.4;
+    S.chainTimer = 0.85;
     S.comboChain = true;
   } else if (obj.type === 'bomb') {
     S.lives--;
@@ -635,74 +635,73 @@ function drawHalf(h) {
 }
 
 function drawHUD() {
-  const pad = 16;
-  const fs = Math.max(16, W * 0.025);
+  const pad = Math.max(8, W * 0.025);
+  const fs = Math.max(14, W * 0.04);
+  const smallFs = fs * 0.7;
+  const heartSize = Math.max(18, W * 0.05);
+  const barH = Math.max(36, fs * 1.9);
 
-  // Score background
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  // ── Top bar background ──
+  const barW = W - pad * 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.beginPath();
-  ctx.roundRect(pad, pad, 160, 44, 10);
+  ctx.roundRect(pad, pad, barW, barH, 10);
   ctx.fill();
 
+  // ── Left: Score ──
   ctx.fillStyle = '#fff';
   ctx.font = `bold ${fs}px "Segoe UI", sans-serif`;
   ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText(`得分: ${S.score}`, pad + 10, pad + 8);
-
+  ctx.textBaseline = 'middle';
+  const leftX = pad + 10;
+  const midY = pad + barH / 2;
+  ctx.fillText(`${S.score}`, leftX, midY - 1);
+  ctx.fillStyle = '#aaa';
+  ctx.font = `${smallFs}px "Segoe UI", sans-serif`;
+  const scoreW = ctx.measureText(`${S.score}`).width;
   if (S.screen === 'playing') {
-    ctx.fillText(`目标: ${S.levelTarget}`, pad + 10, pad + 26);
+    ctx.fillText(`/ ${S.levelTarget}`, leftX + scoreW + 4, midY);
   }
 
-  // Level
+  // ── Right: Hearts ──
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const rightX = W - pad - 8;
+  for (let i = 0; i < 3; i++) {
+    ctx.font = `${heartSize}px sans-serif`;
+    ctx.fillText(i < S.lives ? '❤️' : '🖤', rightX - (2 - i) * (heartSize + 4), midY);
+  }
+  const heartsLeftEdge = rightX - 2 * (heartSize + 4) - heartSize;
+
+  // ── Center: Level / Mode ──
+  const centerX = (leftX + scoreW + 60 + heartsLeftEdge) / 2;
   if (S.screen === 'playing') {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath();
-    ctx.roundRect(W / 2 - 40, pad, 80, 30, 10);
-    ctx.fill();
     ctx.fillStyle = '#ffd700';
     ctx.font = `bold ${fs}px "Segoe UI", sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(`第 ${S.level} 关`, W / 2, pad + 6);
+    ctx.fillText(`第 ${S.level} 关`, centerX, midY);
   } else if (S.screen === 'endless') {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath();
-    ctx.roundRect(W / 2 - 50, pad, 100, 30, 10);
-    ctx.fill();
     ctx.fillStyle = '#ff6b6b';
     ctx.font = `bold ${fs}px "Segoe UI", sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('无尽模式', W / 2, pad + 6);
+    ctx.fillText('无尽模式', centerX, midY);
   }
 
-  // Lives (hearts)
-  const heartSize = Math.max(20, W * 0.032);
-  for (let i = 0; i < 3; i++) {
-    ctx.font = `${heartSize}px sans-serif`;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    ctx.fillText(i < S.lives ? '❤️' : '🖤', W - pad - (2 - i) * (heartSize + 8), pad + 6);
-  }
-
-  // Combo display
+  // ── Combo display (below bar) ──
   if (S.comboChain && S.combo >= 2) {
-    const comboAlpha = clamp(S.chainTimer / 0.2, 0, 1);
+    const comboAlpha = clamp(S.chainTimer / 0.5, 0, 1);
     ctx.fillStyle = `rgba(255,215,0,${comboAlpha})`;
-    ctx.font = `bold ${fs * 1.4}px "Segoe UI", sans-serif`;
+    ctx.font = `bold ${fs * 1.3}px "Segoe UI", sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(`${S.combo} 连击!`, W / 2, pad + 50);
+    ctx.fillText(`${S.combo} 连击!`, W / 2, pad + barH + fs * 1.1);
   }
 
-  // Best score (endless)
+  // ── Best score (endless, below hearts) ──
   if (S.screen === 'endless') {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath();
-    ctx.roundRect(W - 130, pad + 50, 120, 24, 8);
-    ctx.fill();
-    ctx.fillStyle = '#aaa';
-    ctx.font = `${fs * 0.7}px "Segoe UI", sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = `${smallFs}px "Segoe UI", sans-serif`;
     ctx.textAlign = 'right';
-    ctx.fillText(`最高: ${S.bestEndless}`, W - pad - 6, pad + 54);
+    ctx.fillText(`最高: ${S.bestEndless}`, rightX, pad + barH + smallFs * 1.2);
   }
 }
 
@@ -755,108 +754,40 @@ function drawParticles() {
 }
 
 // ─── Screens ──────────────────────────
+const SCREENS = {}; // stores button bounds for click detection
+
 function drawMenu() {
   drawBg();
+  const titleSize = Math.max(28, W * 0.08);
   ctx.fillStyle = '#fff';
-  const titleSize = Math.max(36, W * 0.07);
   ctx.font = `bold ${titleSize}px "Segoe UI", sans-serif`;
   ctx.textAlign = 'center';
-  ctx.fillText('🍉 水果忍者 🍉', W / 2, H * 0.25);
+  ctx.fillText('🍉 水果忍者 🍉', W / 2, H * 0.22);
 
+  const subSize = Math.max(12, W * 0.03);
   ctx.fillStyle = '#ccc';
-  const subSize = Math.max(14, W * 0.025);
   ctx.font = `${subSize}px "Segoe UI", sans-serif`;
-  ctx.fillText('滑动屏幕切水果，小心炸弹！', W / 2, H * 0.25 + titleSize * 1.2);
+  ctx.fillText('滑动屏幕切水果，小心炸弹！', W / 2, H * 0.22 + titleSize * 1.15);
+
+  const bw = Math.min(300, W * 0.75);
+  const bh = Math.max(50, H * 0.07);
+  const gap = Math.max(12, H * 0.02);
+  const startY = H * 0.45;
+  const btnFont = Math.max(16, W * 0.04);
+  const descFont = Math.max(11, W * 0.025);
 
   const btns = [
-    { text: '🎮 闯关模式', y: 0.48, action: startLevels, desc: '逐关挑战，难度递增' },
-    { text: '♾️ 无尽模式', y: 0.58, action: startEndless, desc: '三滴血，看你能走多远' },
+    { text: '🎮 闯关模式', desc: '逐关挑战，难度递增' },
+    { text: '♾️ 无尽模式', desc: '三滴血，看你能走多远' },
   ];
 
-  for (const btn of btns) {
-    const bw = Math.min(280, W * 0.6);
-    const bh = 56;
+  SCREENS.menu = [];
+
+  btns.forEach((btn, i) => {
+    const by = startY + i * (bh + gap);
     const bx = W / 2 - bw / 2;
-    const by = H * btn.y;
+    SCREENS.menu.push({ bx, by, bw, bh, action: i === 0 ? startLevels : startEndless });
 
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(bx, by, bw, bh, 16);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.max(18, W * 0.033)}px "Segoe UI", sans-serif`;
-    ctx.fillText(btn.text, W / 2, by + 22);
-
-    ctx.fillStyle = '#888';
-    ctx.font = `${Math.max(12, W * 0.022)}px "Segoe UI", sans-serif`;
-    ctx.fillText(btn.desc, W / 2, by + 42);
-  }
-}
-
-function drawLevelDone() {
-  drawBg();
-  ctx.fillStyle = '#ffd700';
-  const ts = Math.max(30, W * 0.06);
-  ctx.font = `bold ${ts}px "Segoe UI", sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText('🎉 恭喜过关！', W / 2, H * 0.3);
-
-  ctx.fillStyle = '#fff';
-  const ss = Math.max(16, W * 0.03);
-  ctx.font = `${ss}px "Segoe UI", sans-serif`;
-  ctx.fillText(`第 ${S.level} 关完成`, W / 2, H * 0.3 + ts);
-  ctx.fillText(`得分: ${S.score}  |  最大连击: ${S.maxCombo}`, W / 2, H * 0.3 + ts + ss * 1.5);
-
-  ctx.fillStyle = '#ccc';
-  ctx.font = `${ss * 0.9}px "Segoe UI", sans-serif`;
-  ctx.fillText(`下一关: 目标 ${S.levelTarget} 分  |  炸弹频率 +↑`, W / 2, H * 0.3 + ts + ss * 2.8);
-
-  const bw = Math.min(240, W * 0.5), bh = 50;
-  const bx = W / 2 - bw / 2, by = H * 0.62;
-  ctx.fillStyle = 'rgba(255,255,255,0.1)';
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(bx, by, bw, bh, 14);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.max(16, W * 0.028)}px "Segoe UI", sans-serif`;
-  ctx.fillText('▶ 继续下一关', W / 2, by + 33);
-}
-
-function drawGameOver() {
-  drawBg();
-  ctx.fillStyle = '#ff4444';
-  const ts = Math.max(30, W * 0.06);
-  ctx.font = `bold ${ts}px "Segoe UI", sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText('💔 游戏结束', W / 2, H * 0.28);
-
-  ctx.fillStyle = '#fff';
-  const ss = Math.max(16, W * 0.03);
-  ctx.font = `${ss}px "Segoe UI", sans-serif`;
-  ctx.fillText(`最终得分: ${S.score}  |  最高连击: ${S.maxCombo}`, W / 2, H * 0.28 + ts);
-
-  if (S.score > S.bestEndless && S.bestEndless > 0) {
-    ctx.fillStyle = '#ffd700';
-    ctx.font = `bold ${ss}px "Segoe UI", sans-serif`;
-    ctx.fillText('🏆 新最高分！', W / 2, H * 0.28 + ts + ss * 1.3);
-  }
-
-  const btns = [
-    { text: '🔄 再来一局', y: 0.50, action: startLevels, desc: '闯关模式' },
-    { text: '♾️ 无尽模式', y: 0.60, action: startEndless, desc: '挑战高分' },
-    { text: '🏠 返回主页', y: 0.70, action: () => { S.screen = 'menu'; }, desc: '' },
-  ];
-
-  for (const btn of btns) {
-    const bw = Math.min(260, W * 0.55), bh = 48;
-    const bx = W / 2 - bw / 2, by = H * btn.y;
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 1.5;
@@ -864,15 +795,98 @@ function drawGameOver() {
     ctx.roundRect(bx, by, bw, bh, 14);
     ctx.fill();
     ctx.stroke();
+
     ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.max(16, W * 0.028)}px "Segoe UI", sans-serif`;
-    ctx.fillText(btn.text, W / 2, by + 20);
-    if (btn.desc) {
-      ctx.fillStyle = '#888';
-      ctx.font = `${Math.max(11, W * 0.02)}px "Segoe UI", sans-serif`;
-      ctx.fillText(btn.desc, W / 2, by + 38);
-    }
+    ctx.font = `bold ${btnFont}px "Segoe UI", sans-serif`;
+    ctx.fillText(btn.text, W / 2, by + bh * 0.4);
+
+    ctx.fillStyle = '#888';
+    ctx.font = `${descFont}px "Segoe UI", sans-serif`;
+    ctx.fillText(btn.desc, W / 2, by + bh * 0.7);
+  });
+}
+
+function drawLevelDone() {
+  drawBg();
+  const ts = Math.max(26, W * 0.07);
+  ctx.fillStyle = '#ffd700';
+  ctx.font = `bold ${ts}px "Segoe UI", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🎉 恭喜过关！', W / 2, H * 0.28);
+
+  const ss = Math.max(14, W * 0.035);
+  ctx.fillStyle = '#fff';
+  ctx.font = `${ss}px "Segoe UI", sans-serif`;
+  ctx.fillText(`第 ${S.level} 关完成  |  得分: ${S.score}  |  最大连击: ${S.maxCombo}`, W / 2, H * 0.28 + ts * 1.2);
+
+  ctx.fillStyle = '#ccc';
+  ctx.font = `${ss * 0.85}px "Segoe UI", sans-serif`;
+  ctx.fillText(`下一关目标: ${S.levelTarget} 分  |  炸弹频率 ↑`, W / 2, H * 0.28 + ts * 1.2 + ss * 1.5);
+
+  const bw = Math.min(260, W * 0.6), bh = Math.max(44, H * 0.065);
+  const bx = W / 2 - bw / 2, by = H * 0.58;
+  SCREENS.levelDone = { bx, by, bw, bh, action: nextLevel };
+
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, bw, bh, 12);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.max(16, W * 0.035)}px "Segoe UI", sans-serif`;
+  ctx.fillText('▶ 继续下一关', W / 2, by + bh / 2 + 2);
+}
+
+function drawGameOver() {
+  drawBg();
+  const ts = Math.max(26, W * 0.07);
+  ctx.fillStyle = '#ff4444';
+  ctx.font = `bold ${ts}px "Segoe UI", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('💔 游戏结束', W / 2, H * 0.2);
+
+  const ss = Math.max(14, W * 0.035);
+  ctx.fillStyle = '#fff';
+  ctx.font = `${ss}px "Segoe UI", sans-serif`;
+  ctx.fillText(`最终得分: ${S.score}  |  最高连击: ${S.maxCombo}`, W / 2, H * 0.2 + ts * 1.2);
+
+  if (S.score > S.bestEndless && S.bestEndless > 0) {
+    ctx.fillStyle = '#ffd700';
+    ctx.font = `bold ${ss}px "Segoe UI", sans-serif`;
+    ctx.fillText('🏆 新最高分！', W / 2, H * 0.2 + ts * 1.2 + ss * 1.3);
   }
+
+  const bw = Math.min(300, W * 0.75);
+  const bh = Math.max(42, H * 0.06);
+  const gap = Math.max(8, H * 0.015);
+  const startY = H * 0.45;
+
+  const btns = [
+    { text: '🔄 再来一局（闯关）', action: startLevels },
+    { text: '♾️ 无尽模式', action: startEndless },
+    { text: '🏠 返回主页', action: () => { S.screen = 'menu'; } },
+  ];
+
+  SCREENS.gameOver = [];
+
+  btns.forEach((btn, i) => {
+    const by = startY + i * (bh + gap);
+    const bx = W / 2 - bw / 2;
+    SCREENS.gameOver.push({ bx, by, bw, bh, action: btn.action });
+
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.max(14, W * 0.035)}px "Segoe UI", sans-serif`;
+    ctx.fillText(btn.text, W / 2, by + bh / 2 + 2);
+  });
 }
 
 // ─── Input ────────────────────────────
@@ -931,27 +945,13 @@ canvas.addEventListener('click', e => {
 });
 
 function handleClick(x, y) {
-  if (S.screen === 'menu') {
-    const bw = Math.min(280, W * 0.6), bh = 56;
-    const bx = W / 2 - bw / 2;
-    const by1 = H * 0.48, by2 = H * 0.58;
-    if (x >= bx && x <= bx + bw && y >= by1 && y <= by1 + bh) startLevels();
-    if (x >= bx && x <= bx + bw && y >= by2 && y <= by2 + bh) startEndless();
-  } else if (S.screen === 'levelDone') {
-    const bw = Math.min(240, W * 0.5), bh = 50;
-    const bx = W / 2 - bw / 2, by = H * 0.62;
-    if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) nextLevel();
-  } else if (S.screen === 'gameOver') {
-    const tryBtns = [
-      { y: 0.48, action: startLevels },
-      { y: 0.58, action: startEndless },
-      { y: 0.68, action: () => { S.screen = 'menu'; } },
-    ];
-    for (const btn of tryBtns) {
-      const bw = Math.min(260, W * 0.55), bh = 48;
-      const bx = W / 2 - bw / 2, by = H * btn.y;
-      if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) { btn.action(); return; }
-    }
+  function hit(b) { return x >= b.bx && x <= b.bx + b.bw && y >= b.by && y <= b.by + b.bh; }
+  const btns = SCREENS[S.screen];
+  if (!btns) return;
+  if (Array.isArray(btns)) {
+    for (const b of btns) { if (hit(b)) { b.action(); return; } }
+  } else if (hit(btns)) {
+    btns.action();
   }
 }
 
