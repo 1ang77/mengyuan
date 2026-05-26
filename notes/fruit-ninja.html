@@ -156,13 +156,13 @@ function spawnWave() {
     if (isBomb) {
       S.objects.push({
         type: 'bomb', x, y: H + 60, vx, vy,
-        r: Math.min(55, W * 0.07), rotation: 0, rotSpeed: rand(-2, 2),
+        r: Math.min(60, W * 0.078), rotation: 0, rotSpeed: rand(-2, 2),
       });
     } else {
       const ft = FRUIT_TYPES[randInt(0, FRUIT_TYPES.length - 1)];
       S.objects.push({
         type: 'fruit', x, y: H + 60, vx, vy,
-        r: Math.min(50, W * 0.065), rotation: 0, rotSpeed: rand(-2, 2),
+        r: Math.min(58, W * 0.075), rotation: 0, rotSpeed: rand(-2, 2),
         emoji: ft.emoji, color: ft.color, juice: ft.juice,
       });
     }
@@ -498,10 +498,10 @@ function drawObject(obj) {
   ctx.translate(obj.x, obj.y);
   ctx.rotate(obj.rotation);
 
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  // Subtle shadow - offset below
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
   ctx.beginPath();
-  ctx.arc(3, 3, obj.r, 0, Math.PI * 2);
+  ctx.arc(4, 5, obj.r, 0, Math.PI * 2);
   ctx.fill();
 
   if (obj.type === 'bomb') {
@@ -559,17 +559,16 @@ function drawObject(obj) {
       ctx.fill();
     }
     // 💣 emoji centered
-    ctx.fillStyle = '#fff';
-    ctx.font = `${obj.r * 1.2}px sans-serif`;
+    ctx.font = `${obj.r * 1.7}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('💣', 0, 0);
+    ctx.fillText('💣', 0, 1);
   } else {
     // Fruit body with gradient for 3D look
     const grad = ctx.createRadialGradient(-obj.r*0.3, -obj.r*0.3, obj.r*0.08, 0, 0, obj.r);
     grad.addColorStop(0, '#fff');
-    grad.addColorStop(0.25, obj.color);
-    grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+    grad.addColorStop(0.3, obj.color);
+    grad.addColorStop(1, 'rgba(0,0,0,0.1)');
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(0, 0, obj.r, 0, Math.PI * 2);
@@ -583,10 +582,10 @@ function drawObject(obj) {
     ctx.stroke();
 
     // Emoji
-    ctx.font = `${obj.r * 1.4}px sans-serif`;
+    ctx.font = `${obj.r * 2.0}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(obj.emoji, 0, 0);
+    ctx.fillText(obj.emoji, 0, 1);
   }
 
   ctx.restore();
@@ -625,12 +624,12 @@ function drawHalf(h) {
   }
 
   // Emoji
-  const emojiSize = size * 1.0;
+  const emojiSize = size * 1.5;
   ctx.font = `${emojiSize}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const ox = h.half === 'left' ? -size * 0.15 : size * 0.15;
-  ctx.fillText(h.emoji, ox, 0);
+  const ox = h.half === 'left' ? -size * 0.2 : size * 0.2;
+  ctx.fillText(h.emoji, ox, 1);
 
   ctx.restore();
 }
