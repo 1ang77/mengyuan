@@ -151,18 +151,18 @@ function spawnWave() {
   for (let i = 0; i < count; i++) {
     const isBomb = Math.random() < S.bombChance;
     const x = rand(W * 0.1, W * 0.9);
-    const vy = rand(-H * 1.2, -H * 0.7);
-    const vx = rand(-80, 80);
+    const vy = rand(-H * 1.7, -H * 1.1);
+    const vx = rand(-100, 100);
     if (isBomb) {
       S.objects.push({
-        type: 'bomb', x, y: H + 40, vx, vy,
-        r: Math.min(36, W * 0.045), rotation: 0, rotSpeed: rand(-3, 3),
+        type: 'bomb', x, y: H + 60, vx, vy,
+        r: Math.min(55, W * 0.07), rotation: 0, rotSpeed: rand(-2, 2),
       });
     } else {
       const ft = FRUIT_TYPES[randInt(0, FRUIT_TYPES.length - 1)];
       S.objects.push({
-        type: 'fruit', x, y: H + 40, vx, vy,
-        r: Math.min(32, W * 0.04), rotation: 0, rotSpeed: rand(-3, 3),
+        type: 'fruit', x, y: H + 60, vx, vy,
+        r: Math.min(50, W * 0.065), rotation: 0, rotSpeed: rand(-2, 2),
         emoji: ft.emoji, color: ft.color, juice: ft.juice,
       });
     }
@@ -173,33 +173,50 @@ function spawnWave() {
 function burstJuice(x, y, color, count) {
   for (let i = 0; i < count; i++) {
     const angle = rand(0, Math.PI * 2);
-    const speed = rand(100, 400);
+    const speed = rand(150, 550);
     S.particles.push({
       x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-      life: rand(0.3, 0.8), maxLife: 0.8, color, size: rand(3, 8),
+      life: rand(0.4, 1.0), maxLife: 1.0, color, size: rand(4, 10),
     });
   }
 }
 
 function burstBomb(x, y) {
-  for (let i = 0; i < 25; i++) {
+  // Large explosion particles
+  for (let i = 0; i < 50; i++) {
     const angle = rand(0, Math.PI * 2);
-    const speed = rand(150, 500);
+    const speed = rand(200, 700);
+    const colors = ['#ff2200', '#ff6600', '#ffaa00', '#ffdd00', '#444', '#222', '#fff'];
     S.particles.push({
       x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-      life: rand(0.4, 1.0), maxLife: 1.0, color: rand(0,1) < 0.5 ? '#ff4444' : '#ff8800', size: rand(4, 12),
+      life: rand(0.5, 1.5), maxLife: 1.5, color: colors[randInt(0, colors.length - 1)], size: rand(5, 16),
     });
   }
+  // Smoke ring particles
+  for (let i = 0; i < 20; i++) {
+    const angle = rand(0, Math.PI * 2);
+    const speed = rand(80, 200);
+    S.particles.push({
+      x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      life: rand(0.8, 2.0), maxLife: 2.0, color: '#555', size: rand(10, 25),
+    });
+  }
+  // Flash ring
+  S.particles.push({
+    x, y, vx: 0, vy: 0,
+    life: 0.5, maxLife: 0.5, color: '#fff', size: 10, isFlash: true,
+  });
 }
 
 function addPopup(x, y, text, color) {
   S.popups.push({ x, y, text, color, life: 0.8, maxLife: 0.8, vy: -120 });
 }
 
-function spawnHalves(x, y, emoji, color) {
-  const angle = rand(-0.3, 0.3) - Math.PI / 2;
-  S.halves.push({ x, y, vx: Math.cos(angle) * 150, vy: Math.sin(angle) * 150 - 80, emoji, color, half: 'left', rotation: 0, rotSpeed: rand(-5, -2), life: 0.7, maxLife: 0.7 });
-  S.halves.push({ x, y, vx: Math.cos(angle + Math.PI) * 150, vy: Math.sin(angle + Math.PI) * 150 - 80, emoji, color, half: 'right', rotation: 0, rotSpeed: rand(2, 5), life: 0.7, maxLife: 0.7 });
+function spawnHalves(x, y, emoji, color, juice, r) {
+  const angle = rand(-0.4, 0.4) - Math.PI / 2;
+  const speed = rand(180, 300);
+  S.halves.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 120, emoji, color, juice, r, half: 'left', rotation: 0, rotSpeed: rand(-6, -3), life: 1.0, maxLife: 1.0 });
+  S.halves.push({ x, y, vx: Math.cos(angle + Math.PI) * speed, vy: Math.sin(angle + Math.PI) * speed - 120, emoji, color, juice, r, half: 'right', rotation: 0, rotSpeed: rand(3, 6), life: 1.0, maxLife: 1.0 });
 }
 
 // ─── Start Game ───────────────────────
@@ -281,8 +298,8 @@ function sliceObject(obj, bladePt) {
     if (S.combo > S.maxCombo) S.maxCombo = S.combo;
     const pts = S.combo;
     S.score += pts;
-    burstJuice(obj.x, obj.y, obj.juice, 12);
-    spawnHalves(obj.x, obj.y, obj.emoji, obj.color);
+    burstJuice(obj.x, obj.y, obj.juice, 22);
+    spawnHalves(obj.x, obj.y, obj.emoji, obj.color, obj.juice, obj.r);
     addPopup(obj.x, obj.y, pts > 1 ? `+${pts} x${S.combo}` : '+1', obj.color);
     if (S.combo >= 3) sfxCombo(Math.min(S.combo, 8));
     else sfxSlice();
@@ -290,9 +307,9 @@ function sliceObject(obj, bladePt) {
     S.comboChain = true;
   } else if (obj.type === 'bomb') {
     S.lives--;
-    S.shakeDur = 0.3;
+    S.shakeDur = 0.5;
     burstBomb(obj.x, obj.y);
-    addPopup(obj.x, obj.y, '💥', '#ff0000');
+    addPopup(obj.x, obj.y, '💥💥', '#ff0000');
     sfxBomb();
     S.combo = 0;
     S.comboChain = false;
@@ -482,55 +499,94 @@ function drawObject(obj) {
   ctx.rotate(obj.rotation);
 
   // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
-  ctx.arc(2, 2, obj.r, 0, Math.PI * 2);
+  ctx.arc(3, 3, obj.r, 0, Math.PI * 2);
   ctx.fill();
 
   if (obj.type === 'bomb') {
-    // Bomb body
-    const grad = ctx.createRadialGradient(-obj.r*0.2, -obj.r*0.2, obj.r*0.1, 0, 0, obj.r);
-    grad.addColorStop(0, '#444');
-    grad.addColorStop(0.7, '#1a1a1a');
-    grad.addColorStop(1, '#000');
+    // Bomb body - dark metallic
+    const grad = ctx.createRadialGradient(-obj.r*0.25, -obj.r*0.25, obj.r*0.1, 0, 0, obj.r);
+    grad.addColorStop(0, '#555');
+    grad.addColorStop(0.5, '#2a2a2a');
+    grad.addColorStop(1, '#0a0a0a');
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(0, 0, obj.r, 0, Math.PI * 2);
     ctx.fill();
-    // Fuse
-    ctx.strokeStyle = '#8B4513';
-    ctx.lineWidth = 3;
+    // Highlight rim
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(obj.r * 0.5, -obj.r * 0.7);
-    ctx.quadraticCurveTo(obj.r * 0.8, -obj.r * 1.3, obj.r * 0.2, -obj.r * 1.1);
+    ctx.arc(0, 0, obj.r - 2, 0, Math.PI * 2);
     ctx.stroke();
-    // Spark
-    const sparkAlpha = 0.5 + Math.sin(performance.now() / 100) * 0.5;
-    ctx.fillStyle = `rgba(255,200,50,${sparkAlpha})`;
+    // Danger stripe
+    ctx.strokeStyle = 'rgba(255,60,30,0.3)';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(obj.r * 0.2, -obj.r * 1.1, 5, 0, Math.PI * 2);
+    ctx.arc(0, 0, obj.r * 0.65, -0.3, 2.0);
+    ctx.stroke();
+    // Fuse
+    ctx.strokeStyle = '#8B6914';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(obj.r * 0.45, -obj.r * 0.65);
+    ctx.quadraticCurveTo(obj.r * 0.85, -obj.r * 1.2, obj.r * 0.25, -obj.r * 1.05);
+    ctx.stroke();
+    // Fuse tip (bright)
+    ctx.strokeStyle = '#c4953a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(obj.r * 0.25, -obj.r * 1.05);
+    ctx.lineTo(obj.r * 0.2, -obj.r * 1.15);
+    ctx.stroke();
+    // Spark on fuse
+    const sparkAlpha = 0.4 + Math.sin(performance.now() / 80) * 0.6;
+    ctx.fillStyle = `rgba(255,220,80,${sparkAlpha})`;
+    ctx.shadowColor = `rgba(255,180,0,${sparkAlpha})`;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(obj.r * 0.2, -obj.r * 1.15, 6, 0, Math.PI * 2);
     ctx.fill();
-    // Skull icon
+    ctx.shadowBlur = 0;
+    // Small secondary sparks
+    for (let s = 0; s < 3; s++) {
+      const sx = obj.r * 0.2 + rand(-6, 6);
+      const sy = -obj.r * 1.15 + rand(-6, 6);
+      ctx.fillStyle = `rgba(255,200,50,${sparkAlpha * 0.7})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 💣 emoji centered
     ctx.fillStyle = '#fff';
     ctx.font = `${obj.r * 1.2}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('💣', 0, 1);
+    ctx.fillText('💣', 0, 0);
   } else {
-    // Fruit body glow
-    const grad = ctx.createRadialGradient(-obj.r*0.2, -obj.r*0.2, obj.r*0.1, 0, 0, obj.r);
-    grad.addColorStop(0, obj.color);
-    grad.addColorStop(1, 'rgba(0,0,0,0.3)');
+    // Fruit body with gradient for 3D look
+    const grad = ctx.createRadialGradient(-obj.r*0.3, -obj.r*0.3, obj.r*0.08, 0, 0, obj.r);
+    grad.addColorStop(0, '#fff');
+    grad.addColorStop(0.25, obj.color);
+    grad.addColorStop(1, 'rgba(0,0,0,0.25)');
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(0, 0, obj.r, 0, Math.PI * 2);
     ctx.fill();
 
+    // Subtle outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, obj.r, 0, Math.PI * 2);
+    ctx.stroke();
+
     // Emoji
-    ctx.font = `${obj.r * 1.5}px sans-serif`;
+    ctx.font = `${obj.r * 1.4}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(obj.emoji, 0, 1);
+    ctx.fillText(obj.emoji, 0, 0);
   }
 
   ctx.restore();
@@ -542,20 +598,38 @@ function drawHalf(h) {
   ctx.rotate(h.rotation);
   const alpha = Math.max(0, h.life / h.maxLife);
   ctx.globalAlpha = alpha;
+  const size = h.r || 30;
 
+  // Outer skin (full circle with skin color)
   ctx.fillStyle = h.color;
   ctx.beginPath();
-  if (h.half === 'left') {
-    ctx.arc(0, 0, 14, Math.PI * 0.5, Math.PI * 1.5);
-  } else {
-    ctx.arc(0, 0, 14, Math.PI * 1.5, Math.PI * 0.5);
-  }
+  ctx.arc(0, 0, size, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.font = '16px sans-serif';
+  // Inner flesh (drawn on the flat cut side)
+  ctx.fillStyle = h.juice || h.color;
+  if (h.half === 'left') {
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.92, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.fill();
+    // Flat cut surface
+    ctx.fillStyle = h.juice || '#ffe0b2';
+    ctx.fillRect(-size * 0.92, -size * 0.92, size * 0.15, size * 1.84);
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.92, Math.PI * 1.5, Math.PI * 0.5);
+    ctx.fill();
+    // Flat cut surface
+    ctx.fillStyle = h.juice || '#ffe0b2';
+    ctx.fillRect(-size * 0.07, -size * 0.92, size * 0.15, size * 1.84);
+  }
+
+  // Emoji
+  const emojiSize = size * 1.0;
+  ctx.font = `${emojiSize}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const ox = h.half === 'left' ? -4 : 4;
+  const ox = h.half === 'left' ? -size * 0.15 : size * 0.15;
   ctx.fillText(h.emoji, ox, 0);
 
   ctx.restore();
@@ -653,11 +727,30 @@ function drawPopups() {
 function drawParticles() {
   for (const p of S.particles) {
     const alpha = clamp(p.life / p.maxLife, 0, 1);
-    ctx.fillStyle = p.color;
-    ctx.globalAlpha = alpha;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.isFlash) {
+      // Expanding flash ring
+      const progress = 1 - alpha;
+      const ringR = progress * 120;
+      ctx.strokeStyle = `rgba(255,200,50,${alpha * 0.8})`;
+      ctx.lineWidth = 8 * alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner glow
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, ringR);
+      grad.addColorStop(0, `rgba(255,255,200,${alpha * 0.4})`);
+      grad.addColorStop(1, 'rgba(255,100,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, ringR, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 }
